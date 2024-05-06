@@ -42,12 +42,19 @@ queue_t *queue_new(void) {
 void queue_free(queue_t *q) {
     /* How about freeing the list elements and the strings? */
     /* Free queue structure */
-    
-    list_ele_t *q_head = q->head;
-    while (q_head != NULL) {
-        list_ele_t *next = q_head->next;
-        free(q_head);
-        q_head = next;
+
+    if (q == NULL) {
+        return;
+    }
+
+    list_ele_t *current = q->head;
+    list_ele_t *next = NULL;
+    while (current != NULL) {
+        next = current->next;
+        if (current->value != NULL)
+            free(current->value);
+        free(current);
+        current = next;
     }
     free(q);
 }
@@ -71,14 +78,14 @@ bool queue_insert_head(queue_t *q, const char *s) {
         return false;
     }
 
-    newh = malloc(sizeof(list_ele_t));
+    newh = (list_ele_t *)malloc(sizeof(list_ele_t));
     if (newh == NULL) {
         return false;
     }
 
     /* Don't forget to allocate space for the string and copy it */
-    
-    char *new_value = malloc(strlen(s) + 1);
+
+    char *new_value = (char *)malloc(strlen(s) + 1);
     if (new_value == NULL) {
         free(newh);
         return false;
@@ -87,9 +94,9 @@ bool queue_insert_head(queue_t *q, const char *s) {
     new_value[strlen(s)] = '\0';
     newh->value = new_value;
 
-    q->size ++;
+    q->size++;
 
-    if(q->head == NULL) {
+    if (q->head == NULL) {
         q->head = newh;
         q->tail = newh;
         newh->next = NULL;
@@ -137,9 +144,9 @@ bool queue_insert_tail(queue_t *q, const char *s) {
     new_value[strlen(s)] = '\0';
     newh->value = new_value;
 
-    q->size ++;
+    q->size++;
 
-    if(q->head == NULL) {
+    if (q->tail == NULL) {
         q->head = newh;
         q->tail = newh;
         newh->next = NULL;
@@ -178,15 +185,19 @@ bool queue_remove_head(queue_t *q, char *buf, size_t bufsize) {
 
     list_ele_t *oldh = q->head;
     q->head = oldh->next;
+    oldh->next = NULL;
 
-    q->size --;
+    q->size--;
 
-    if(buf != NULL)
-    {
+    if (buf != NULL) {
         strncpy(buf, oldh->value, bufsize - 1);
         buf[bufsize - 1] = '\0';
     }
+
+    if (oldh->value != NULL)
+        free(oldh->value);
     free(oldh);
+
     return true;
 }
 
@@ -204,12 +215,11 @@ size_t queue_size(queue_t *q) {
     /* You need to write the code for this function */
     /* Remember: It should operate in O(1) time */
 
-    if(q == NULL || q->head == NULL) {
+    if (q == NULL || q->head == NULL) {
         return 0;
     }
 
     return q->size;
-    return 0;
 }
 
 /**
@@ -224,10 +234,10 @@ size_t queue_size(queue_t *q) {
 void queue_reverse(queue_t *q) {
     /* You need to write the code for this function */
 
-    if(q == NULL || q->head == NULL) {
+    if (q == NULL || q->head == NULL) {
         return;
     }
-    
+
     list_ele_t *prev = NULL;
     list_ele_t *current = q->head;
     list_ele_t *next = NULL;
@@ -241,5 +251,4 @@ void queue_reverse(queue_t *q) {
     }
 
     q->head = prev;
-
 }
