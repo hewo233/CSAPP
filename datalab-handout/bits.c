@@ -143,7 +143,9 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
-  return 2;
+  int a = x & y;
+  int b = ~x & ~y;
+  return ~a & ~b;
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -152,8 +154,7 @@ int bitXor(int x, int y) {
  *   Rating: 1
  */
 int tmin(void) {
-
-  return 2;
+  return 1 << 31;
 
 }
 //2
@@ -165,7 +166,10 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  return 2;
+  int y = x + 1;
+  int t = (y >> 31);
+  int p = (x >> 31);
+  return (!p) & t;
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -176,7 +180,11 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  return 2;
+  int p = 0xaa;
+  int u = (p << 8) + p;
+  u = (u << 8) + p;
+  u = (u << 8) + p;
+  return !((x & u) ^ u);
 }
 /* 
  * negate - return -x 
@@ -186,7 +194,7 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+  return (~x) + 1;
 }
 //3
 /* 
@@ -199,7 +207,12 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+  int p = x >> 4;
+  int Notis11 = ((p & 11) ^ p);
+  int isone4 = (x & (0b1000)) >> 3;
+  int Notis1000 = (p & (0b1000) ^ p);
+  int Notis1001 = (p & (0b1001) ^ p);
+  return (~Notis11) & ( (isone4 & (!(Notis1000 & Notis1001) )) & )
 }
 /* 
  * conditional - same as x ? y : z 
