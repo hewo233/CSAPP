@@ -207,12 +207,10 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  int p = x >> 4;
-  int Notis11 = ((p & 11) ^ p);
-  int isone4 = (x & (0b1000)) >> 3;
-  int Notis1000 = (p & (0b1000) ^ p);
-  int Notis1001 = (p & (0b1001) ^ p);
-  return (~Notis11) & ( (isone4 & (!(Notis1000 & Notis1001) )) & )
+  int b = x >> 31;
+  int not_f1 = (x + ~0b101111) >> 31;
+  int not_f2 = (~x + 0b111010) >> 31;
+  return (!b) & (!(not_f1 | not_f2));
 }
 /* 
  * conditional - same as x ? y : z 
