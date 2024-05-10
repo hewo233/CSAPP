@@ -167,9 +167,7 @@ int tmin(void) {
  */
 int isTmax(int x) {
   int y = x + 1;
-  int t = (y >> 31);
-  int p = (x >> 31);
-  return (!p) & t;
+  return (!(x+y+1)) & (!!y);
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -208,8 +206,10 @@ int negate(int x) {
  */
 int isAsciiDigit(int x) {
   int b = x >> 31;
-  int not_f1 = (x + ~0b101111) >> 31;
-  int not_f2 = (~x + 0b111010) >> 31;
+  int u0 = 0x2f;
+  int u1 = 0x3a;
+  int not_f1 = (x + (~u0)) >> 31;
+  int not_f2 = (~x + u1) >> 31;
   return (!b) & (!(not_f1 | not_f2));
 }
 /* 
@@ -232,10 +232,12 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  int xf = ~x + 1;
+  int ysubx = y + xf;
+  int q = ysubx >> 31; //y < x
+  return !q;
 }
-//4
-/* 
+  /* 
  * logicalNeg - implement the ! operator, using all of 
  *              the legal operators except !
  *   Examples: logicalNeg(3) = 0, logicalNeg(0) = 1
@@ -244,7 +246,12 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  int u = (0x7f << 8) | 0xff;
+  u = (u << 8) | 0xff;
+  u = (u << 8) | 0xff; // u = 0x7fffffff
+  int y = (((x + u) >> 31) & 1);
+  int x2 = ((x >> 31) & 1);
+  return ~(x2|y) + 2;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
