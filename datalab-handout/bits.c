@@ -249,7 +249,8 @@ int logicalNeg(int x) {
   int u = (0x7f << 8) | 0xff;
   u = (u << 8) | 0xff;
   u = (u << 8) | 0xff; // u = 0x7fffffff
-  int y = (((x + u) >> 31) & 1);
+  int z = x + u;
+  int y = (z >> 31) & 1;
   int x2 = ((x >> 31) & 1);
   return ~(x2|y) + 2;
 }
