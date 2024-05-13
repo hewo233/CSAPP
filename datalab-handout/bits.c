@@ -13,7 +13,6 @@
  * case it's OK.  
  */
 
-#include <stdio.h>
 #if 0
 /*
  * Instructions to Students:
@@ -263,19 +262,34 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  int sign = x >> 31;
-  int xx = (x & (~sign)) | (~x & sign);
-  int bit_16 = (!!(xx >> 16)) << 4;
+
+  int sign,xx,bit_16,bit_8,bit_4,bit_2,bit_1,bit_0;
+
+  sign = x >> 31;
+
+  xx = (x & (~sign)) | (~x & sign);
+
+  bit_16 = (!!(xx >> 16)) << 4;
+
   xx = xx >> bit_16;
-  int bit_8 = (!!(xx >> 8)) << 3;
+
+  bit_8 = (!(!(xx >> 8))) << 3;
+
   xx = xx >> bit_8;
-  int bit_4 = (!!(xx >> 4)) << 2;
+
+  bit_4 = (!!(xx >> 4)) << 2;
+
   xx = xx >> bit_4;
-  int bit_2 = (!!(xx >> 2)) << 1;
+
+  bit_2 = (!!(xx >> 2)) << 1;
+
   xx = xx >> bit_2;
-  int bit_1 = (!!(xx >> 1));
+
+  bit_1 = (!!(xx >> 1));
+
   xx = xx >> bit_1;
-  int bit_0 = (!!(xx));
+
+  bit_0 = (!!(xx));
 
   return bit_16 + bit_8 + bit_4 + bit_2 + bit_1 + bit_0 + 1;
   
@@ -294,16 +308,18 @@ int howManyBits(int x) {
  */
 unsigned floatScale2(unsigned uf) {
 
-  int sign = (uf & 0x80000000);
-  int exp = (uf & 0x7f800000) >> 23;
+  int sign, exp, frac, result;
+
+  sign = (uf & 0x80000000);
+  exp = (uf & 0x7f800000) >> 23;
   if(exp == 255) return uf;
   if(exp == 0)
   {
-    int frac = (uf & 0x007fffff) << 1;
+    frac = (uf & 0x007fffff) << 1;
     return sign | frac;
   }
   exp += 1;
-  int result = (uf & 0x807fffff) | (exp << 23);
+  result = (uf & 0x807fffff) | (exp << 23);
   return result;
 }
 /* 
@@ -320,19 +336,18 @@ unsigned floatScale2(unsigned uf) {
  */
 int floatFloat2Int(unsigned uf) {
 
-  int sign = (uf & 0x80000000);
-  int exp = ((uf & 0x7f800000) >> 23) - 127;
-  int frac = (uf & 0x007fffff)|0x00800000;
+  int sign,exp,frac,result;
+
+  sign = (uf & 0x80000000);
+  exp = ((uf & 0x7f800000) >> 23) - 127;
+  frac = (uf & 0x007fffff)|0x00800000;
 
   //printf("sign: %d exp: %d frac: %d\n", sign, exp, frac);
 
   if(exp < 0) return 0;
   if(exp > 30) return 0x80000000;
 
-
-  int result;
-
-  exp -= 23;
+  exp = exp - 23;
 
   if(exp < 0) result = frac >> -exp;
   else result = frac << exp;
@@ -355,5 +370,8 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+  int exp = x + 127;
+  if(exp > 255) exp = 255;
+  if(exp < 0) exp = 0;
+  return exp << 23;
 }
