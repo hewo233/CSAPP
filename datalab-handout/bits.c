@@ -13,6 +13,7 @@
  * case it's OK.  
  */
 
+#include <stdio.h>
 #if 0
 /*
  * Instructions to Students:
@@ -307,7 +308,27 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+
+  int sign = (uf & 0x80000000);
+  int exp = ((uf & 0x7f800000) >> 23) - 127;
+  int frac = (uf & 0x007fffff)|0x00800000;
+
+  //printf("sign: %d exp: %d frac: %d\n", sign, exp, frac);
+
+  if(exp < 0) return 0;
+  if(exp > 30) return 0x80000000;
+
+
+  int result;
+
+  exp -= 23;
+
+  if(exp < 0) result = frac >> -exp;
+  else result = frac << exp;
+
+  if(sign) return -result;
+  return result;
+
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
