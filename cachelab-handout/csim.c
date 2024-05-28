@@ -1,6 +1,8 @@
 #include "cachelab.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <getopt.h>
 
 typedef struct{
     int tag;
@@ -8,16 +10,14 @@ typedef struct{
     int lru_tag;
 }tCacheLine;
 
-int my_time = 0;
-
 int hits, misses, evictions;
 
-int get_tag(int address, int s, int b)
+int get_tag(unsigned long address, int s, int b)
 {
     return address >> (s + b);
 }
 
-int get_set(int address, int s, int b)
+int get_set(unsigned long address, int s, int b)
 {
     return (address >> b) & ((1 << s) - 1);
 }
@@ -50,76 +50,121 @@ void free_cache(tCacheLine** cache, int s) {
     free(cache);
 }
 
-void L_operate(tCacheLine** cache, int address, int s,int b,int e)
+void access(tCacheLine** cache, unsigned long address,int s, int b, int e)
 {
     int tag = get_tag(address, s, b);
     int set = get_set(address, s, b);
-    if(cache[set][e].valid == 0) // cache miss
+
+    for(int i = 0; i < e; i++)
     {
-        misses ++;
-        printf(" miss");
-        cache[set][e].valid = 1;
-        cache[set][e].tag = tag;
-        cache[set][e].lru_tag = ++my_time;
-    }
-    else 
-    {
-        if(cache[set][e].tag == tag) //cache hit
+        if(cache[set][i].valid == 1 && cache[set][i].tag == tag)
         {
-            hits ++;
-            printf(" hit");
+            hits++;
+            cache[set][i].lru_tag = 0;
+            return;
         }
-        else // eviction
+    } // cache hit
+
+    misses++;
+
+    for(int i = 0;i < e; i++)
+    {
+        if(cache[set][i].valid == 0)
         {
-            misses ++;
-            evictions ++;
-            printf(" miss eviction");
-            int change_e = 0;
-            for(int i=0;i<e;i++)
+            cache[set][i].valid = 1;
+            cache[set][i].tag = tag;
+            cache[set][i].lru_tag = 0;
+            return;
+        }
+    }
+
+    evictions++;
+
+    int lru_now = 0;
+    for(int i = 0; i < e; i++)
+    {
+        if(cache[set][i].lru_tag > cache[set][lru_now].lru_tag)
+        {
+            lru_now = i;
+        } 
+    }
+    cache[set][lru_now].tag = tag;
+    cache[set][lru_now].lru_tag = 0;
+}
+
+void update_lru(tCacheLine** cache,int s,int e)
+{
+    int S = (1 << s);
+    for(int i = 0; i < S; i++)
+    {
+        for(int j = 0; j < e; j++)
+        {
+            if(cache[i][j].valid == 1)
             {
-                if(cache[set][i].lru_tag < cache[set][change_e].lru_tag)
-                {
-                    i = change_e;
-                }
+                cache[i][j].lru_tag++;
             }
-            cache[set][e].tag = tag;
-            cache[set][e].lru_tag = ++my_time;
         }
     }
 }
 
-void S_operate(tCacheLine** cache, int address, int s, int b, int e)
+int main(int argc, char *argv[])
 {
-    int tag = get_tag(address, s, b);
-    int set = get_set(address, s, b);
-    if(cache[set][e].valid == 0)
+    int s, e, b;
+    FILE *fp;
+    char *filePath = (char*)malloc(100);
+
+    int opt = 0;
+    while ((opt = getopt(argc, argv, "s:E:b:t:")) != -1) 
     {
-        misses ++;
-        printf(" miss");
+        switch (opt) {
+            case 's':
+                s = atoi(optarg);
+                break;
+
+            case 'E':
+                e = atoi(optarg);
+                break;
+
+            case 'b':
+                b = atoi(optarg);
+                break;
+
+            case 't':
+                strcpy(filePath, optarg);
+                break;
+        }
     }
-    else
+
+    tCacheLine** cache = init(s, e);
+
+    fp = fopen(filePath, "r");
+
+    char operation;
+    unsigned long address = 0;
+    int size = 0;
+    while(fscanf(fp," %c %lx,%d", &operation, &address, &size) > 0)
     {
-        if(cache[set][e].tag == tag)
+        switch(operation)
         {
-            hits ++;
-            printf(" hit");
+            case 'L':
+                access(cache, address, s, b, e);
+                break;
+            case 'S':
+                access(cache, address, s, b, e);
+                break;
+            case 'M':
+                access(cache, address, s, b, e);
+                access(cache, address, s, b, e);
+                break;
         }
-        else
-        {
-            misses ++;
-            printf(" miss");
-        }
+        update_lru(cache, s, e);
     }
-}
 
-void M_operate(tCacheLine** cache, int address, int s, int b, int e)
-{
-    L_operate(cache, address, s, b, e);
-    S_operate(cache, address, s, b, e);
-}
+    fclose(fp);
 
-int main()
-{
+    free_cache(cache, s);
+    free(filePath);
+
     printSummary(hits, misses, evictions);
     return 0;
 }
