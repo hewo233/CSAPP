@@ -1,4 +1,4 @@
-#!/usr//bin/python
+#!/home/hewo/anaconda3/bin/python
 #
 # driver.py - The driver tests the correctness of the student's cache
 #     simulator and the correctness and performance of their transpose
@@ -48,8 +48,8 @@ def main():
     autograde = opts.autograde
 
     # Check the correctness of the cache simulator
-    print "Part A: Testing cache simulator"
-    print "Running ./test-csim"
+    print ("Part A: Testing cache simulator")
+    print ("Running ./test-csim")
     p = subprocess.Popen("./test-csim", 
                          shell=True, stdout=subprocess.PIPE)
     stdout_data = p.communicate()[0]
@@ -60,7 +60,7 @@ def main():
         if re.match("TEST_CSIM_RESULTS", line):
             resultsim = re.findall(r'(\d+)', line)
         else:
-            print "%s" % (line)
+            print ("%s" % (line) )
 
     # Check the correctness and performance of the transpose function
     # 32x32 transpose
