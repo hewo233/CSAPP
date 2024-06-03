@@ -3,6 +3,7 @@
  * 
  * <Put your name and login ID here>
  */
+#include <bits/types/sigset_t.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -163,8 +164,33 @@ int main(int argc, char **argv)
  * background children don't receive SIGINT (SIGTSTP) from the kernel
  * when we type ctrl-c (ctrl-z) at the keyboard.  
 */
+
 void eval(char *cmdline) 
 {
+    char *argv[MAXARGS];
+    int bg = parseline(cmdline, argv);
+    if(argv[0] == NULL)
+        return;
+    if(builtin_cmd(argv)) return;
+    
+    sigset_t mask, blockAll_mask, prev_mask;
+    sigemptyset(&mask);
+    sigfillset(&blockAll_mask);
+    sigaddset(&mask, SIGCHLD);
+    sigprocmask(SIG_BLOCK, &mask, &prev_mask);
+
+    pid_t pid;
+    if((pid = fork()) == 0)
+    {
+        setpgid(0, 0);
+        sigprocmask(SIG_SETMASK, &prev_mask, NULL);
+        if(execve(argv[0], argv, environ) == -1 )
+        {
+            printf("%s: Command not found\n", argv[0]);
+            exit(0);
+        }
+    }
+
     return;
 }
 
@@ -231,6 +257,26 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
+    if(strcmp(argv[0], "quit") == 0)
+    {
+        sigquit_handler(0);
+    }
+    if(strcmp(argv[0], "jobs") == 0)
+    {
+        listjobs(jobs);
+        return 1;
+    }
+    if(strcmp(argv[0], "bg") == 0)
+    {
+        do_bgfg(argv);
+        return 1;
+    }
+    if(strcmp(argv[0], "fg") == 0)
+    {
+        do_bgfg(argv);
+        return 1;
+    }
+
     return 0;     /* not a builtin command */
 }
 
