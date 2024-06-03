@@ -3,10 +3,7 @@
  * 
  * <Put your name and login ID here>
  */
-<<<<<<< HEAD
-=======
 #include <bits/types/sigset_t.h>
->>>>>>> db32a9aa89a96c69249e97a7195096f3e2137927
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -167,10 +164,6 @@ int main(int argc, char **argv)
  * background children don't receive SIGINT (SIGTSTP) from the kernel
  * when we type ctrl-c (ctrl-z) at the keyboard.  
 */
-<<<<<<< HEAD
-void eval(char *cmdline) 
-{
-=======
 
 void eval(char *cmdline) 
 {
@@ -198,7 +191,6 @@ void eval(char *cmdline)
         }
     }
 
->>>>>>> db32a9aa89a96c69249e97a7195096f3e2137927
     return;
 }
 
@@ -265,8 +257,6 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
-<<<<<<< HEAD
-=======
     if(strcmp(argv[0], "quit") == 0)
     {
         sigquit_handler(0);
@@ -287,7 +277,6 @@ int builtin_cmd(char **argv)
         return 1;
     }
 
->>>>>>> db32a9aa89a96c69249e97a7195096f3e2137927
     return 0;     /* not a builtin command */
 }
 
