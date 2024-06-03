@@ -204,9 +204,14 @@ void eval(char *cmdline)
 
     sigprocmask(SIG_SETMASK, &prev_mask, NULL);
 
-    if(!bg)
+    if(bg)
+    {
+        printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
+    } 
+    else if(!bg)
     {
         waitfg(pid);
+        printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline);
     }
 
     return;
@@ -435,7 +440,7 @@ void sigtstp_handler(int sig)
         kill(-pid, SIGTSTP);
     }
 
-    sigprocmask(SIG_SETMASK, &prev_mask, NULL);
+    
 }
 
 /*********************
