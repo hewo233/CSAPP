@@ -11,7 +11,7 @@ void handler(int signum) {
 }
 
 int main() {
-    signal(SIGINT, handler);
+    handler(SIGINT);
     sleep(10);
     printf("Sleeping for 10 seconds\n");
     return 0;
