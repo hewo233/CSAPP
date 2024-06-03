@@ -331,7 +331,6 @@ void do_bgfg(char **argv)
         {
             kill(-job->pid, SIGCONT);
             job->state = BG;
-            printf("[%d] (%d) %s", job->jid, job->pid, job->cmdline);
         }
     }
     else if(strcmp(argv[0], "fg") == 0)
@@ -360,10 +359,6 @@ void do_bgfg(char **argv)
         job->state = FG;
         waitfg(job->pid);
     }
-    else
-    {
-        printf("Error: %s\n", argv[0]);
-    }
     return;
 }
 
@@ -372,6 +367,11 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    while(fgpid(jobs) == pid)
+    {
+        sleep(1);
+    }
+    
     return;
 }
 
@@ -388,7 +388,12 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-    return;
+    int status;
+    pid_t pid;
+    while( (pid = waitpid(-1, &status, WNOHANG | WUNTRACED) ) > 0)
+    {
+        deletejob(jobs, pid);
+    }
 }
 
 /* 
@@ -398,7 +403,18 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-    return;
+    sigset_t mask, prev_mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigprocmask(SIG_BLOCK, &mask, &prev_mask);
+
+    pid_t pid = fgpid(jobs);
+    if(pid != 0)
+    {
+        kill(-pid, SIGINT);
+    }
+
+    sigprocmask(SIG_SETMASK, &prev_mask, NULL);
 }
 
 /*
@@ -408,7 +424,18 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
-    return;
+    sigset_t mask, prev_mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGTSTP);
+    sigprocmask(SIG_BLOCK, &mask, &prev_mask);
+
+    pid_t pid = fgpid(jobs);
+    if(pid != 0)
+    {
+        kill(-pid, SIGTSTP);
+    }
+
+    sigprocmask(SIG_SETMASK, &prev_mask, NULL);
 }
 
 /*********************
