@@ -45,8 +45,8 @@ team_t team = {
 
 #define SIZE_T_SIZE (ALIGN(sizeof(size_t)))
 
-#define WSIZE   4
-#define DSIZE   8
+#define WSIZE   (4)
+#define DSIZE   (8)
 #define CHUNKSIZE   (1 << 12)
 
 #define MAX(x, y)   ((x) > (y) ? (x) : (y))
@@ -146,20 +146,67 @@ int mm_init(void)
     return 0;
 }
 
+// first fit search
+static void *find_fit(size_t size)
+{
+    void *bp;
+    for(bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp))
+    {
+        if(!GET_ALLOC(HDRP(bp)) && (size <= GET_SIZE(HDRP(bp))))
+        {
+            return bp;
+        }
+    }
+    return NULL;
+}
+
+static int place(void *bp, size_t size)
+{
+    size_t csize = GET_SIZE(HDRP(bp));
+    if((csize - size < DSIZE) || GET_ALLOC(bp)) return -1;
+    if((csize - size) >= (2 * DSIZE))
+    {
+        PUT(HDRP(bp), PACK(size, 1));
+        PUT(FTRP(bp), PACK(size, 1));
+        bp = NEXT_BLKP(bp);
+        PUT(HDRP(bp), PACK(csize - size, 0));
+        PUT(FTRP(bp), PACK(csize - size, 0));
+    }
+    else
+    {
+        PUT(HDRP(bp), PACK(csize, 1));
+        PUT(FTRP(bp), PACK(csize, 1));
+    }
+    return 0;
+}
+
 /* 
  * mm_malloc - Allocate a block by incrementing the brk pointer.
  *     Always allocate a block whose size is a multiple of the alignment.
  */
 void *mm_malloc(size_t size)
 {
-    int newsize = ALIGN(size + SIZE_T_SIZE);
-    void *p = mem_sbrk(newsize);
-    if (p == (void *)-1)
-	return NULL;
-    else {
-        *(size_t *)p = size;
-        return (void *)((char *)p + SIZE_T_SIZE);
+    size_t asize;
+    size_t extendsize;
+    char *bp;
+
+    if(size == 0) return NULL;
+    if(size <= DSIZE) asize = 2 * DSIZE;
+    else asize = DSIZE * ((size + DSIZE + DSIZE - 1) / DSIZE);
+
+    if((bp = find_fit(asize)) != NULL)
+    {
+        if(place(bp, asize) == -1) return NULL;
+        return bp;
     }
+
+    extendsize = MAX(asize, CHUNKSIZE);
+    if((bp = extend_heap(extendsize / WSIZE)) == NULL)
+    {
+        return NULL;
+    }
+    if(place(bp, asize) == -1) return NULL;
+    return bp;
 }
 
 /*
@@ -178,18 +225,18 @@ void mm_free(void *bp)
  */
 void *mm_realloc(void *ptr, size_t size)
 {
-    void *oldptr = ptr;
-    void *newptr;
-    size_t copySize;
-    
-    newptr = mm_malloc(size);
-    if (newptr == NULL)
-      return NULL;
-    copySize = *(size_t *)((char *)oldptr - SIZE_T_SIZE);
-    if (size < copySize)
-      copySize = size;
-    memcpy(newptr, oldptr, copySize);
-    mm_free(oldptr);
+    if(ptr == NULL) return mm_malloc(size);
+    if(size == 0)
+    {
+        mm_free(ptr);
+        return NULL;
+    }
+    void *newptr = mm_malloc(size);
+    if(newptr == NULL) return NULL;
+    size_t oldsize = GET_SIZE(HDRP(ptr));
+    if(size < oldsize) oldsize = size;
+    memcpy(newptr, ptr, oldsize);
+    mm_free(ptr);
     return newptr;
 }
 
