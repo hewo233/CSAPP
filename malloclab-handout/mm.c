@@ -111,7 +111,7 @@ static void *extend_heap(size_t s)
     char *bp;
     
     if(s & 1) s += 1;
-    size_t size = size * WSIZE;
+    size_t size = s * WSIZE;
 
     bp = mem_sbrk(size);
 
@@ -152,7 +152,7 @@ static void *find_fit(size_t size)
     void *bp;
     for(bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp))
     {
-        if(!GET_ALLOC(HDRP(bp)) && (size <= GET_SIZE(HDRP(bp))))
+        if( (!GET_ALLOC(HDRP(bp))) && (size + DSIZE <= GET_SIZE(HDRP(bp)) ))
         {
             return bp;
         }
@@ -163,7 +163,10 @@ static void *find_fit(size_t size)
 static int place(void *bp, size_t size)
 {
     size_t csize = GET_SIZE(HDRP(bp));
-    if((csize - size < DSIZE) || GET_ALLOC(bp)) return -1;
+    //printf("\nNOW PLACE: size = %zu, csize = %zu\n", size, csize);
+    if(csize - size < DSIZE) printf("csize - size < DSIZE\n");
+    if(GET_ALLOC(HDRP(bp))) printf("GET_ALLOC(bp)\n");
+    if((csize - size < DSIZE) || GET_ALLOC(HDRP(bp))) return -1;
     if((csize - size) >= (2 * DSIZE))
     {
         PUT(HDRP(bp), PACK(size, 1));
@@ -194,12 +197,19 @@ void *mm_malloc(size_t size)
     if(size <= DSIZE) asize = 2 * DSIZE;
     else asize = DSIZE * ((size + DSIZE + DSIZE - 1) / DSIZE);
 
+    
     if((bp = find_fit(asize)) != NULL)
     {
-        if(place(bp, asize) == -1) return NULL;
+        //printf("FIND\n");
+        if(place(bp, asize) == -1)
+        {
+            printf("PLACEERR\n");
+            return NULL;
+        }
+        //printf("NOERR1\n");
         return bp;
     }
-
+    //printf("NOERR2\n");
     extendsize = MAX(asize, CHUNKSIZE);
     if((bp = extend_heap(extendsize / WSIZE)) == NULL)
     {
