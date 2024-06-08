@@ -66,7 +66,8 @@ team_t team = {
 #define NEXT_BLKP(bp)  ((char *)(bp) + GET_SIZE(HDRP(bp)))
 #define PREV_BLKP(bp)  ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)) )
 
-static void *heap_listp = NULL;
+static char *heap_listp = NULL;
+static char *save_bp;
 
 static void *coalesce(void *bp)
 {
@@ -102,6 +103,9 @@ static void *coalesce(void *bp)
         bp = PREV_BLKP(bp);
     }
 
+    if ((save_bp > (char *)bp) && (save_bp < NEXT_BLKP(bp)))
+        save_bp = bp;
+
     return bp;
 
 }
@@ -127,7 +131,6 @@ static void *extend_heap(size_t s)
     return coalesce(bp);
 }
 
-
 /* 
  * mm_init - initialize the malloc package.
  */
@@ -141,20 +144,31 @@ int mm_init(void)
     PUT(heap_listp + (3 * WSIZE), PACK(0, 1));
     heap_listp += (2 * WSIZE);
 
+    save_bp = heap_listp;
+
     if(extend_heap(CHUNKSIZE / WSIZE) == NULL)
         return -1;
     return 0;
 }
 
 // first fit search
+
 static void *find_fit(size_t size)
 {
-    void *bp;
-    for(bp = heap_listp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp))
+    char *old_bp = save_bp;
+    for(; GET_SIZE(HDRP(save_bp)) > 0; save_bp = NEXT_BLKP(save_bp))
     {
-        if( (!GET_ALLOC(HDRP(bp))) && (size + DSIZE <= GET_SIZE(HDRP(bp)) ))
+        if(!GET_ALLOC(HDRP(save_bp)) && (size <= GET_SIZE(HDRP(save_bp))))
         {
-            return bp;
+            return save_bp;
+        }
+    }
+
+    for(save_bp = heap_listp; save_bp < old_bp; save_bp = NEXT_BLKP(save_bp))
+    {
+        if(!GET_ALLOC(HDRP(save_bp)) && (size <= GET_SIZE(HDRP(save_bp))))
+        {
+            return save_bp;
         }
     }
     return NULL;
@@ -164,9 +178,10 @@ static int place(void *bp, size_t size)
 {
     size_t csize = GET_SIZE(HDRP(bp));
     //printf("\nNOW PLACE: size = %zu, csize = %zu\n", size, csize);
-    if(csize - size < DSIZE) printf("csize - size < DSIZE\n");
+    
+    if(csize - size < 0) printf("csize - size < DSIZE\n");
     if(GET_ALLOC(HDRP(bp))) printf("GET_ALLOC(bp)\n");
-    if((csize - size < DSIZE) || GET_ALLOC(HDRP(bp))) return -1;
+    if((csize - size < 0) || GET_ALLOC(HDRP(bp))) return -1;
     if((csize - size) >= (2 * DSIZE))
     {
         PUT(HDRP(bp), PACK(size, 1));
