@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -57,6 +58,47 @@ void build_header(char *header, tURI *pURI, rio_t *client_rio)
     strcat(header, "\r\n");
 }
 
+void parse_uri(char *uri, tURI *pURI)
+{
+    char *ptr = strstr(uri, "http://");
+    if(ptr == NULL)
+    {
+        fprintf(stderr, "Invalid URI\n");
+        return;
+    }
+    ptr += strlen("http://");
+
+    char *ptr2 = strstr(ptr, ":");
+    if(ptr2 == NULL)
+    {
+        strcpy(pURI->port, "80");
+    }
+    else
+    {
+        sscanf(ptr2, ":%s", pURI->port);
+    }
+
+    ptr2 = strstr(ptr2, "/");
+    if(ptr2 == NULL)
+    {
+        fprintf(stderr, "Invalid URI\n");
+        return;
+    }
+    
+    sscanf(ptr2, "%s", pURI->path);
+    
+    ptr2 = strstr(ptr, ":");
+    if(ptr2 == NULL)
+    {
+        sscanf(ptr, "%[^/]", pURI->hostname);
+    }
+    else
+    {
+        sscanf(ptr, "%[^:]", pURI->hostname);
+    }
+
+}
+
 void doit(int connfd)
 {
     rio_t rio, server_rio;
@@ -85,7 +127,17 @@ void doit(int connfd)
         return;
     }
 
-    
+    Rio_readinitb(&server_rio, serverfd);
+    Rio_writen(serverfd, server_request, strlen(server_request));
+
+    size_t n;
+    while((n = Rio_readlineb(&server_rio, buf, MAXLINE)) > 0)
+    {
+        Rio_writen(connfd, buf, n);
+    }
+
+    Free(pURI);
+    close(serverfd);
 }
 
 int main(int argc, char **argv) 
