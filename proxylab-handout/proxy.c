@@ -31,7 +31,7 @@ void build_header(char *header, tURI *pURI, rio_t *client_rio)
 {
     strcpy(header, "GET ");
     strcat(header, pURI->path);
-    strcat(header, " HTTP/1.0\r\n");
+    strcat(header, " HTTP/1.1\r\n");
 
     strcat(header, "Host: ");
     strcat(header, pURI->hostname);
@@ -49,7 +49,7 @@ void build_header(char *header, tURI *pURI, rio_t *client_rio)
     {
         if(strcmp(buf, "\r\n") == 0)
             break;
-        if(strstr(buf, "Connection") && strstr(buf, "Proxy-Connection") )
+        if(strstr(buf, "Connection") || strstr(buf, "Proxy-Connection") )
         {
             strcat(header, buf);
         }
@@ -75,7 +75,15 @@ void parse_uri(char *uri, tURI *pURI)
     }
     else
     {
+        char *ptr3 = strstr(ptr2, "/");
+        if(ptr3 == NULL)
+        {
+            fprintf(stderr, "Invalid URI\n");
+            return;
+        }
+        *ptr3 = '\0';
         sscanf(ptr2, ":%s", pURI->port);
+        *ptr3 = '/';
     }
 
     ptr2 = strstr(ptr2, "/");
@@ -108,7 +116,7 @@ void doit(int connfd)
     Rio_readlineb(&rio, buf, MAXLINE);
     sscanf(buf, "%s %s %s", method, uri, version);
 
-    printf("DEBUGGGGGGGGGG:!! %s %s %s\n", method, uri, version);
+    printf("DOIT: m u v!!: %s %s %s\n", method, uri, version);
 
     if(strcasecmp(method, "GET"))
     {
@@ -119,15 +127,16 @@ void doit(int connfd)
     tURI *pURI = (tURI *)malloc(sizeof(tURI));
     parse_uri(uri, pURI);
 
+    printf("pURI is : %s %s %s\n", pURI->hostname, pURI->port, pURI->path);
+
     char server_request[MAXLINE];
     build_header(server_request, pURI, &rio);
 
+    printf("server_request is : %s\n", server_request);
+
     int serverfd = Open_clientfd(pURI->hostname, pURI->port);
-    if(serverfd < 0)
-    {
-        fprintf(stderr, "Open_clientfd error\n");
-        return;
-    }
+
+    printf("DE: client ok\n");
 
     Rio_readinitb(&server_rio, serverfd);
     Rio_writen(serverfd, server_request, strlen(server_request));
