@@ -19,12 +19,43 @@ void SIGPIPE_handler(int sig)
     return;
 }
 
-struct URI
+typedef struct URI
 {
     char hostname[MAXLINE];
     char port[MAXLINE];
     char path[MAXLINE];
-};
+}tURI;
+
+void build_header(char *header, tURI *pURI, rio_t *client_rio)
+{
+    strcpy(header, "GET ");
+    strcat(header, pURI->path);
+    strcat(header, " HTTP/1.0\r\n");
+
+    strcat(header, "Host: ");
+    strcat(header, pURI->hostname);
+    if(strcmp(pURI->port, "80"))
+    {
+        strcat(header, ":");
+        strcat(header, pURI->port);
+    }
+    strcat(header, "\r\n");
+
+    strcat(header, user_agent_hdr);
+
+    char buf[MAXLINE];
+    while(Rio_readlineb(client_rio, buf, MAXLINE) > 0)
+    {
+        if(strcmp(buf, "\r\n") == 0)
+            break;
+        if(strstr(buf, "Connection") && strstr(buf, "Proxy-Connection") )
+        {
+            strcat(header, buf);
+        }
+    }
+
+    strcat(header, "\r\n");
+}
 
 void doit(int connfd)
 {
@@ -41,7 +72,20 @@ void doit(int connfd)
         return;
     }
 
+    tURI *pURI = (tURI *)Malloc(sizeof(tURI));
+    parse_uri(uri, pURI);
 
+    char server_request[MAXLINE];
+    build_header(server_request, pURI, &rio);
+
+    int serverfd = Open_clientfd(pURI->hostname, pURI->port);
+    if(serverfd < 0)
+    {
+        fprintf(stderr, "Open_clientfd error\n");
+        return;
+    }
+
+    
 }
 
 int main(int argc, char **argv) 
@@ -60,6 +104,11 @@ int main(int argc, char **argv)
     signal(SIGPIPE, SIGPIPE_handler);
 
     listenfd = Open_listenfd(argv[1]);
+    if(listenfd < 0)
+    {
+        fprintf(stderr, "Open_listenfd error\n");
+        exit(1);
+    }
     while(1)
     {
         clientlen = sizeof(clientaddr);
