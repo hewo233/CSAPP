@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <signal.h>
@@ -107,13 +108,15 @@ void doit(int connfd)
     Rio_readlineb(&rio, buf, MAXLINE);
     sscanf(buf, "%s %s %s", method, uri, version);
 
+    printf("DEBUGGGGGGGGGG:!! %s %s %s\n", method, uri, version);
+
     if(strcasecmp(method, "GET"))
     {
-        fprintf(stderr, "GET is not allowed\n");
+        fprintf(stderr, "Only GET is allowed\n");
         return;
     }
 
-    tURI *pURI = (tURI *)Malloc(sizeof(tURI));
+    tURI *pURI = (tURI *)malloc(sizeof(tURI));
     parse_uri(uri, pURI);
 
     char server_request[MAXLINE];
