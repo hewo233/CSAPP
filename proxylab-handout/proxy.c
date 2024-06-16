@@ -31,7 +31,7 @@ void build_header(char *header, tURI *pURI, rio_t *client_rio)
 {
     strcpy(header, "GET ");
     strcat(header, pURI->path);
-    strcat(header, " HTTP/1.0\r\n");
+    strcat(header, " HTTP/1.1\r\n");
 
     strcat(header, "Host: ");
     strcat(header, pURI->hostname);
@@ -56,6 +56,8 @@ void build_header(char *header, tURI *pURI, rio_t *client_rio)
     }
 
     strcat(header, "\r\n");
+
+    printf("DEBUGGGGGGGGGG:!! %s\n", header);
 }
 
 void parse_uri(char *uri, tURI *pURI)
@@ -93,82 +95,6 @@ void parse_uri(char *uri, tURI *pURI)
         sscanf(ptr, "%[^/]", pURI->hostname);
     }
     else
-    {
-        sscanf(ptr, "%[^:]", pURI->hostname);
-    }
-
-}
-
-void doit(int connfd)
-{
-    rio_t rio, server_rio;
-    char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
-    
-    Rio_readinitb(&rio, connfd);
-    Rio_readlineb(&rio, buf, MAXLINE);
-    sscanf(buf, "%s %s %s", method, uri, version);
-
-    printf("DEBUGGGGGGGGGG:!! %s %s %s\n", method, uri, version);
-
-    if(strcasecmp(method, "GET"))
-    {
-        fprintf(stderr, "Only GET is allowed\n");
-        return;
-    }
-
-    tURI *pURI = (tURI *)malloc(sizeof(tURI));
-    parse_uri(uri, pURI);
-
-    char server_request[MAXLINE];
-    build_header(server_request, pURI, &rio);
-
-    int serverfd = Open_clientfd(pURI->hostname, pURI->port);
-    if(serverfd < 0)
-    {
-        fprintf(stderr, "Open_clientfd error\n");
-        return;
-    }
-
-    Rio_readinitb(&server_rio, serverfd);
-    Rio_writen(serverfd, server_request, strlen(server_request));
-
-    size_t n;
-    while((n = Rio_readlineb(&server_rio, buf, MAXLINE)) > 0)
-    {
-        Rio_writen(connfd, buf, n);
-    }
-
-    Free(pURI);
-    close(serverfd);
-}
-
-int main(int argc, char **argv) 
-{
-    if(argc != 2)
-    {
-        fprintf(stderr, "usage: %s <port>\n", argv[0]);
-        exit(1);
-    }
-
-    int listenfd, connfd;
-    socklen_t clientlen;
-    char hostname[MAXLINE], port[MAXLINE];
-    struct sockaddr_storage clientaddr;
-
-    signal(SIGPIPE, SIGPIPE_handler);
-
-    listenfd = Open_listenfd(argv[1]);
-    if(listenfd < 0)
-    {
-        fprintf(stderr, "Open_listenfd error\n");
-        exit(1);
-    }
-    while(1)
-    {
-        clientlen = sizeof(clientaddr);
-        connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
-        Getnameinfo((SA *)&clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, 0);
-        printf("Accepted connection from (%s, %s)\n", hostname, port);
 
         doit(connfd);
 
