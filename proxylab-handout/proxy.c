@@ -57,7 +57,7 @@ void build_header(char *header, tURI *pURI, rio_t *client_rio)
 
     strcat(header, "\r\n");
 
-    printf("DEBUGGGGGGGGGG:!! %s\n", header);
+    // printf("DEBUGGGGGGGGGG:!! %s\n", header);
 }
 
 void parse_uri(char *uri, tURI *pURI)
@@ -118,7 +118,7 @@ void doit(int connfd)
     Rio_readlineb(&rio, buf, MAXLINE);
     sscanf(buf, "%s %s %s", method, uri, version);
 
-    printf("DOIT: m u v!!: %s %s %s\n", method, uri, version);
+    //printf("DOIT: m u v!!: %s %s %s\n", method, uri, version);
 
     if(strcasecmp(method, "GET"))
     {
