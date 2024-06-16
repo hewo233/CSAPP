@@ -141,7 +141,7 @@ void doit(int connfd)
 
     int serverfd = Open_clientfd(pURI->hostname, pURI->port);
 
-    printf("DE: client ok\n");
+    //printf("DE: client ok\n");
 
     Rio_readinitb(&server_rio, serverfd);
     Rio_writen(serverfd, server_request, strlen(server_request));
