@@ -11,6 +11,9 @@
 
 #define MAXLINE 8192
 
+#define SBUFSIZE 16
+#define NTHREADS 6
+
 /* You won't lose style points for including this long line in your code */
 static const char *user_agent_hdr = "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 Firefox/10.0.3\r\n";
 
@@ -199,6 +202,19 @@ int sbuf_remove(sbuf_t *sp)
     return item;
 }
 
+sbuf_t sbuf;
+
+void *thread(void *vargp)
+{
+    Pthread_detach(pthread_self());
+    while(1)
+    {
+        int connfd = sbuf_remove(&sbuf);
+        doit(connfd);
+        close(connfd);
+    }
+}
+
 int main(int argc, char **argv) 
 {
     if(argc != 2)
@@ -216,18 +232,23 @@ int main(int argc, char **argv)
 
     listenfd = Open_listenfd(argv[1]);
 
+    sbuf_init(&sbuf, 16);
+
+
+    pthread_t tid;
+    for(int i = 0; i < NTHREADS; i++)
+    {
+        Pthread_create(&tid, NULL, thread, NULL);
+    }
 
     while(1)
     {
         clientlen = sizeof(clientaddr);
         connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+        sbuf_insert(&sbuf, connfd);
         Getnameinfo((SA *)&clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, 0);
         printf("Accepted connection from (%s, %s)\n", hostname, port);
 
-        doit(connfd);
-
-        Close(connfd);
     }
-
     return 0;
 }
