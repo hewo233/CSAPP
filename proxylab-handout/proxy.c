@@ -1,3 +1,4 @@
+#include <bits/posix2_lim.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -29,6 +30,27 @@ typedef struct URI
     char port[MAXLINE];
     char path[MAXLINE];
 }tURI;
+
+typedef struct 
+{
+    char buf[MAX_OBJECT_SIZE];
+    char uri[MAXLINE];
+    int valid;
+    int LRU;
+
+    int read_cnt;
+    sem_t mutex;
+    sem_t w;
+} tCacheline;
+
+typedef struct
+{
+    tCacheline data[MAXLINE];
+    int num;
+} tCache;
+
+int LRU_cnt = 0;
+
 
 void build_header(char *header, tURI *pURI, rio_t *client_rio)
 {
@@ -112,14 +134,75 @@ void parse_uri(char *uri, tURI *pURI)
 
 }
 
+tCache *init_cache()
+{
+    tCache *cache = (tCache *)malloc(sizeof(tCache));
+    cache->num = 0;
+    return cache;
+}
+
+int get_cache(tCache *cache, char *uri)
+{
+    for(int i = 0; i < cache->num; i++)
+    {
+        if(strcmp(cache->data[i].uri, uri) == 0)
+        {
+            cache->data[i].LRU = (++LRU_cnt);
+            return i;
+        }
+    }
+    return -1;
+}
+
+void write_cache(tCache *cache, char *uri, char *buf)
+{
+    if(cache->num == MAXLINE)
+    {
+        for(int i = 0; i < cache->num; i++)
+        {
+            if(cache->data[i].LRU == LRU_cnt && cache->data[i].valid == 1)
+            {
+                cache->data[i].valid = 0;
+                break;
+            }
+        }
+    }
+    strcpy(cache->data[cache->num].uri, uri);
+    strcpy(cache->data[cache->num].buf, buf);
+    cache->data[cache->num].valid = 1;
+    cache->data[cache->num].LRU = (++LRU_cnt);
+    cache->data[cache->num].read_cnt = 0;
+    Sem_init(&cache->data[cache->num].mutex, 0, 1);
+    Sem_init(&cache->data[cache->num].w, 0, 1);
+    cache->num++;
+}
+
+void free_cache(tCache *cache)
+{
+    for(int i = 0; i < cache->num; i++)
+    {
+        Free(cache->data[i].buf);
+    }
+    Free(cache);
+}
+
+tCache *cache = NULL;
+
 void doit(int connfd)
 {
     rio_t rio, server_rio;
     char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
+
+    char server_request[MAXLINE];
+
+    char cache_tag[MAXLINE];
     
     Rio_readinitb(&rio, connfd);
     Rio_readlineb(&rio, buf, MAXLINE);
+
     sscanf(buf, "%s %s %s", method, uri, version);
+
+    strcpy(cache_tag, uri);
 
     //printf("DOIT: m u v!!: %s %s %s\n", method, uri, version);
 
@@ -130,11 +213,35 @@ void doit(int connfd)
     }
 
     tURI *pURI = (tURI *)malloc(sizeof(tURI));
+
+    int index = get_cache(cache, cache_tag);
+    if(index != -1) // cache hit :)
+    {
+        P(&cache->data[index].mutex);
+        cache->data[index].read_cnt++;
+        if(cache->data[index].read_cnt == 1)
+        {
+            P(&cache->data[index].w);
+        }
+        V(&cache->data[index].mutex);
+
+        Rio_writen(connfd, cache->data[index].buf, strlen(cache->data[index].buf));
+
+        P(&cache->data[index].mutex);
+        cache->data[index].read_cnt--;
+        if(cache->data[index].read_cnt == 0)
+        {
+            V(&cache->data[index].w);
+        }
+        V(&cache->data[index].mutex);
+        return ;
+    }
+
     parse_uri(uri, pURI);
 
-    printf("pURI is : %s %s %s\n", pURI->hostname, pURI->port, pURI->path);
+    //printf("pURI is : %s %s %s\n", pURI->hostname, pURI->port, pURI->path);
 
-    char server_request[MAXLINE];
+
     build_header(server_request, pURI, &rio);
 
     printf("server_request is : %s\n", server_request);
@@ -146,14 +253,29 @@ void doit(int connfd)
     Rio_readinitb(&server_rio, serverfd);
     Rio_writen(serverfd, server_request, strlen(server_request));
 
+    int buf_size = 0;
+    char cache_buf[MAX_OBJECT_SIZE];
+
     size_t n;
     while((n = Rio_readlineb(&server_rio, buf, MAXLINE)) > 0)
     {
+        buf_size += n;
+        if(buf_size < MAX_OBJECT_SIZE)
+        {
+            strcat(cache_buf, buf);
+        }
         Rio_writen(connfd, buf, n);
     }
 
+    //printf("OKKKKKKKKKKKK\n");
+
     Free(pURI);
     close(serverfd);
+
+    if(buf_size < MAX_OBJECT_SIZE)
+    {
+        write_cache(cache, cache_tag, cache_buf);
+    }
 }
 
 typedef struct
@@ -215,6 +337,7 @@ void *thread(void *vargp)
     }
 }
 
+
 int main(int argc, char **argv) 
 {
     if(argc != 2)
@@ -222,6 +345,8 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: %s <port>\n", argv[0]);
         exit(1);
     }
+
+    cache = init_cache();
 
     int listenfd, connfd;
     socklen_t clientlen;
